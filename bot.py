@@ -7,7 +7,7 @@ from datetime import datetime
 from bs4 import BeautifulSoup
 import threading
 
-TOKEN = input("📝 Токен бота: ").strip()
+TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 PRICES_FILE = "prices.json"
 
 # ТОП-30 самых популярных препаратов UA+PL
@@ -295,3 +295,4 @@ while True:
     except Exception as e:
         print(f"❌ {e}")
         time.sleep(2)
+
