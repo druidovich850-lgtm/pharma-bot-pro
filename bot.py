@@ -279,6 +279,41 @@ threading.Thread(target=update_prices_daily, daemon=True).start()
 
 print("🚀 PharmaBot PRO v5.1 — РЕАЛЬНЫЙ парсинг UA+PL!")
 print("✅ Тест: одесса темпалгин | Lodz ebilfumin | Szczecin paracetamol")
+# HTTP сервер для Render Web Service (0.0.0.0:PORT)
+import socketserver
+from http.server import BaseHTTPRequestHandler
+
+class HealthHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")
+        self.end_headers()
+        self.wfile.write(b"PharmaBot PRO v5.1 OK")
+        print("🌐 Health check OK")
+
+# Render требует HTTP порт!
+if 'PORT' in os.environ:
+    PORT = int(os.environ['PORT'])
+    httpd = socketserver.TCPServer(("", PORT), HealthHandler)
+    print(f"🌐 HTTP server: 0.0.0.0:{PORT}")
+    
+    # Telegram polling в отдельном потоке
+    def telegram_loop():
+        offset_local = 0
+        while True:
+            try:
+                url = f"https://api.telegram.org/bot{TOKEN}/getUpdates?offset={offset_local}"
+                resp = requests.get(url).json()
+                for update in resp.get('result', []):
+                    handle_update(update)
+                    offset_local = update['update_id'] + 1
+                time.sleep(1)
+            except Exception as e:
+                print(f"❌ Telegram: {e}")
+                time.sleep(2)
+    
+    threading.Thread(target=telegram_loop, daemon=True).start()
+    httpd.serve_forever()
 
 offset = 0
 while True:
@@ -295,4 +330,5 @@ while True:
     except Exception as e:
         print(f"❌ {e}")
         time.sleep(2)
+
 
