@@ -279,56 +279,26 @@ threading.Thread(target=update_prices_daily, daemon=True).start()
 
 print("🚀 PharmaBot PRO v5.1 — РЕАЛЬНЫЙ парсинг UA+PL!")
 print("✅ Тест: одесса темпалгин | Lodz ebilfumin | Szczecin paracetamol")
-# HTTP сервер для Render Web Service (0.0.0.0:PORT)
-import socketserver
-from http.server import BaseHTTPRequestHandler
+from flask import Flask, request
 
-class HealthHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.send_header("Content-type", "text/plain")
-        self.end_headers()
-        self.wfile.write(b"PharmaBot PRO v5.1 OK")
-        print("🌐 Health check OK")
+app = Flask(__name__)
 
-# Render требует HTTP порт!
-if 'PORT' in os.environ:
-    PORT = int(os.environ['PORT'])
-    httpd = socketserver.TCPServer(("", PORT), HealthHandler)
-    print(f"🌐 HTTP server: 0.0.0.0:{PORT}")
-    
-    # Telegram polling в отдельном потоке
-    def telegram_loop():
-        offset_local = 0
-        while True:
-            try:
-                url = f"https://api.telegram.org/bot{TOKEN}/getUpdates?offset={offset_local}"
-                resp = requests.get(url).json()
-                for update in resp.get('result', []):
-                    handle_update(update)
-                    offset_local = update['update_id'] + 1
-                time.sleep(1)
-            except Exception as e:
-                print(f"❌ Telegram: {e}")
-                time.sleep(2)
-    
-    threading.Thread(target=telegram_loop, daemon=True).start()
-    httpd.serve_forever()
-
-offset = 0
-while True:
+@app.route(f'/{TOKEN}', methods=['POST'])
+def webhook():
     try:
-        url = f"https://api.telegram.org/bot{TOKEN}/getUpdates?offset={offset}"
-        resp = requests.get(url).json()
-        for update in resp.get('result', []):
-            handle_update(update)
-            offset = update['update_id'] + 1
-        time.sleep(1)
-    except KeyboardInterrupt:
-        print("\n🛑 Остановлен")
-        break
+        update = request.get_json()
+        handle_update(update)
+        return 'OK', 200
     except Exception as e:
-        print(f"❌ {e}")
-        time.sleep(2)
+        print(f"❌ Webhook: {e}")
+        return 'ERROR', 500
 
+@app.route('/', methods=['GET', 'HEAD'])
+def healthcheck():
+    return "PharmaBot PRO v5.1 OK 💊", 200
 
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 10000))
+    print(f"🚀 Webhook: /{TOKEN}")
+    print(f"🌐 Healthcheck: /")
+    app.run(host='0.0.0.0', port=port, debug=False)
